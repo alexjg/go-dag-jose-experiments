@@ -1,0 +1,18 @@
+{
+  "name": "dag-jose-roundtirp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dag-jose": "^0.1.1",
+    "did-jwt": "^4.5.1",
+    "ipfs": "^0.50.1",
+    "ipfs-http-client": "^46.1.1",
+    "multiformats": "^3.0.3"
+  }
+}
