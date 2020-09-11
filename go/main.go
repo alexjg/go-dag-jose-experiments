@@ -17,7 +17,6 @@ import (
 	ipld "github.com/ipld/go-ipld-prime"
 	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
-	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	gojose "gopkg.in/square/go-jose.v2"
 )
 
@@ -25,14 +24,15 @@ func main() {
 	shell := ipfsApi.NewShell("localhost:5001")
     bridge := IPFSBridge{shell}
 
+    // This is the private key we used to sign the JWS in typescript
     key, err := hex.DecodeString("0248aacea967f3972ddbd2fd29798c0f6607a65aa9bc7f3149e9294d31aedf80")
     if err != nil {
         fmt.Fprintf(os.Stderr, "Error decoding key: %v", err)
         os.Exit(-1)
     }
     privateKey := ed25519.NewKeyFromSeed(key)
-    fmt.Printf("Public: %v", privateKey.Public())
 
+    // This is the CID of the JWS the typescript application is advertising
     jwsCid, err := cid.Decode("bagcqcerafzecmo67npzj56gfyukh3tbwxywgfsmxirr4oq57s6sddou4p5dq")
     if err != nil {
         fmt.Fprintf(os.Stderr, "Error creating JWS link: %v", err)
@@ -40,6 +40,7 @@ func main() {
     }
     jwsLnk := cidlink.Link{Cid: jwsCid}
 
+    // This is where we actually attempt to load the JWS
     jwsNode, err := bridge.LoadJWS(jwsLnk)
     if err != nil {
         fmt.Fprintf(os.Stderr, "Error loading jws link: %v", err)
@@ -70,10 +71,13 @@ func main() {
     fmt.Printf("Decoded payload: %v\n", payloadCid)
 }
 
+// The IPFSBridge is an adapter which teaches the ipfs.Shell HTTP client how 
+// to load data for go-ipld-prime
 type IPFSBridge struct {
     *ipfsApi.Shell
 }
 
+// Pushe a node to IPFS and return the corresponding ipld.Link
 func (i *IPFSBridge) Build(node ipld.Node) (ipld.Link, error) {
     lb := cidlink.LinkBuilder{Prefix: cid.Prefix{
 		Version:  1,    // Usually '1'.
@@ -95,23 +99,7 @@ func (i *IPFSBridge) Build(node ipld.Node) (ipld.Link, error) {
 	)
 }
 
-func (i *IPFSBridge) Load(lnk ipld.Link) (ipld.Node, error) {
-	nb := basicnode.Prototype.Any.NewBuilder()
-
-    err := lnk.Load(
-		context.Background(), 
-		ipld.LinkContext{},   
-		nb,                   
-		i.loader,               
-	)
-	if err != nil {
-        return nil, err
-	}
-
-    n := nb.Build()
-    return n, nil
-}
-
+// Given a link attempt to load a dagjose.DagJOSE object from it
 func (i *IPFSBridge) LoadJWS(lnk ipld.Link) (*dagjose.DagJOSE, error) {
     builder := dagjose.NewBuilder()
     err := lnk.Load(

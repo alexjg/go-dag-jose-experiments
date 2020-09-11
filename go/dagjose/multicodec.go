@@ -46,13 +46,30 @@ func (d *DagJOSE) GeneralJSONSerialization() string {
     jsonJose["signatures"] = sigs
     encoded, err := json.Marshal(jsonJose)
     if err != nil {
-        panic("argh")
+        panic("impossible")
     }
     return string(encoded)
 }
 
 func Decoder(na ipld.NodeAssembler, r io.Reader) error {
     joseAssembler, isJoseAssembler := na.(*DagJOSENodeBuilder)
+    // THIS IS A HACK
+    // Rather than implementing the `NodeAssembler` interface, we are just 
+    // checking if the user has indicated that they want to construct a 
+    // DagJOSE, which they do by passing a DagJOSENodeBuilder to ipld.Link.Load.
+    // We then proceed to decode the data to CBOR, and then construct a DagJOSE
+    // object from the deserialized CBOR. Allocating an intermediary object
+    // is explicitly what the whole `NodeAssembler` machinery is designed to avoid
+    // so we absolutely should not do this.
+    //
+    // The next step here is to implement `NodeAssembler` (in `assembler.go`)
+    // in such a way that it throws errors if the incoming data does not match
+    // the expected layout of a dag-jose object. The only reason I have not
+    // done this yet is that it requires a lot of code to implement NodeAssembler
+    // and I wanted to check that the user facing API made sense first.
+    //
+    // This is also why this code contains very little error checking, we'll be
+    // doing that more thoroughly in the NodeAssembler implementation
     if isJoseAssembler {
         rawDecoded := make(map[string]interface{})
         decoder := cbor.NewDecoder(r)

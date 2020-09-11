@@ -10,7 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "dag-jose": "^0.1.1",
-    "did-jwt": "^4.5.1",
+    "did-jwt": "git+https://github.com/alexjg/did-jwt.git#fix-eddsa-alg",
     "ipfs": "^0.50.1",
     "ipfs-http-client": "^46.1.1",
     "multiformats": "^3.0.3"

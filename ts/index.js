@@ -41,12 +41,12 @@ async function main() {
     const api = await ipfs_1.default.create({ ipld: { formats: [format] } });
     const payload = new cids_1.default(hash);
     const jws = await dagJose.createDagJWS(payload, signer, { "alg": "EdDSA" });
-    //dagJose.verifyDagJWS(jws, [{
-    //id: "",
-    //type: "",
-    //controller: "",
-    //publicKeyBase64: bytesToBase64(keypair.publicKey)
-    //}])
+    dagJose.verifyDagJWS(jws, [{
+            id: "",
+            type: "",
+            controller: "",
+            publicKeyBase64: bytesToBase64(keypair.publicKey)
+        }]);
     console.log(jws);
     const cid = await api.dag.put(jws, { format: format.codec, hashAlg: "sha2-256" });
     console.log(cid);

@@ -44,6 +44,9 @@ type dagJoseValueAssembler struct {*DagJOSENodeBuilder}
 var dagJoseMixin = mixins.MapAssembler{TypeName: "dagjose"}
 
 // Dummy node assembler implementation
+// When complete this will actually be a generic way to construct a DagJOSE
+// from any valid ipld codec. This feels a little redundant as dag-jose specifies
+// that the wire protocol will be CBOR
 func (d *DagJOSENodeBuilder) BeginMap(sizeHint int) (ipld.MapAssembler, error) {
     return &dagJOSEMapAssembler{d}, nil
 }

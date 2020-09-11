@@ -14,19 +14,18 @@ const format = legacy(multiformats, dagJose.default.name)
 const hash = "bafyrkmfzcmeff5yo5m2pfhisessei3mjrtbbe6oe6femzfqh4le4wwvpbwlk3ad5mv6tk4q2lmoercivxwxq"
 const seed = base64ToBytes("Akiqzqln85ct29L9KXmMD2YHplqpvH8xSekpTTGu34A=")
 
-
 async function main() {
     const keypair = ed25519.generateKeyPairFromSeed(seed)
     const signer = didJWT.NaclSigner(bytesToBase64(keypair.secretKey))
     const api = await Ipfs.create({ipld: {formats: [format]}})
     const payload = new CID(hash)
     const jws = await dagJose.createDagJWS(payload, signer, {"alg": "EdDSA"})
-    //dagJose.verifyDagJWS(jws, [{
-        //id: "",
-        //type: "",
-        //controller: "",
-        //publicKeyBase64: bytesToBase64(keypair.publicKey)
-    //}])
+    dagJose.verifyDagJWS(jws, [{
+        id: "",
+        type: "",
+        controller: "",
+        publicKeyBase64: bytesToBase64(keypair.publicKey)
+    }])
     console.log(jws)
     const cid = await api.dag.put(jws, { format: format.codec, hashAlg: "sha2-256"})
     console.log(cid)
