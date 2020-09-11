@@ -3,18 +3,19 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
 
 	"dagjoseroundtrip/dagjose"
+    "encoding/hex"
+
+	"golang.org/x/crypto/ed25519"
 
 	"github.com/ipfs/go-cid"
 	ipfsApi "github.com/ipfs/go-ipfs-api"
 	ipld "github.com/ipld/go-ipld-prime"
 	_ "github.com/ipld/go-ipld-prime/codec/dagcbor"
-	"github.com/ipld/go-ipld-prime/fluent"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	gojose "gopkg.in/square/go-jose.v2"
@@ -22,39 +23,17 @@ import (
 
 func main() {
 	shell := ipfsApi.NewShell("localhost:5001")
-    lb := cidlink.LinkBuilder{Prefix: cid.Prefix{
-		Version:  1,    // Usually '1'.
-		Codec:    0x71, // 0x71 means "dag-cbor" -- See the multicodecs table: https://github.com/multiformats/multicodec/
-		MhType:   0x15, // 0x15 means "sha3-384" -- See the multicodecs table: https://github.com/multiformats/multicodec/
-		MhLength: 48,   // sha3-224 hash has a 48-byte sum.
-	}}
-    bridge := IPFSBridge{
-        shell,
-        lb,
-    }
+    bridge := IPFSBridge{shell}
 
-    planetsLnk, err := createPlanets(&bridge)
+    key, err := hex.DecodeString("0248aacea967f3972ddbd2fd29798c0f6607a65aa9bc7f3149e9294d31aedf80")
     if err != nil {
-        fmt.Fprintf(os.Stderr, "Error creating planets: %v", err)
+        fmt.Fprintf(os.Stderr, "Error decoding key: %v", err)
         os.Exit(-1)
     }
+    privateKey := ed25519.NewKeyFromSeed(key)
+    fmt.Printf("Public: %v", privateKey.Public())
 
-    n, err := bridge.Load(planetsLnk)
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "Error loading planets link: %v", err)
-        os.Exit(-1)
-    }
-
-	fmt.Printf("we loaded a %s with %d entries\n", n.ReprKind(), n.Length())
-
-    result, err := shell.BlockGet("bagcqcera6m5ryn2zhfcv6vakblfdicqdnq4fgz4mfquglrigjd6ltqbscebq")
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "Error getting JWS block: %v", err)
-        os.Exit(-1)
-    }
-    fmt.Printf("We loaded the raw jws: %v\n", result)
-
-    jwsCid, err := cid.Decode("bagcqcera6m5ryn2zhfcv6vakblfdicqdnq4fgz4mfquglrigjd6ltqbscebq")
+    jwsCid, err := cid.Decode("bagcqcerafzecmo67npzj56gfyukh3tbwxywgfsmxirr4oq57s6sddou4p5dq")
     if err != nil {
         fmt.Fprintf(os.Stderr, "Error creating JWS link: %v", err)
         os.Exit(-1)
@@ -66,61 +45,50 @@ func main() {
         fmt.Fprintf(os.Stderr, "Error loading jws link: %v", err)
         os.Exit(-1)
     }
-    fmt.Printf("Loaded node: %v\n", jwsNode)
+    fmt.Printf("Loaded jws: %v\n", jwsNode.GeneralJSONSerialization())
 
-    _, err = gojose.ParseSigned(jwsNode.FullSerialization())
+    sig, err := gojose.ParseSigned(jwsNode.GeneralJSONSerialization())
     if err != nil {
         fmt.Fprintf(os.Stderr, "Error parsing JOSE serialization: %v", err)
         os.Exit(-1)
     }
-}
-
-func createPlanets(bridge *IPFSBridge) (ipld.Link, error) {
-
-    earthNode := fluent.MustBuildMap(basicnode.Prototype.Map, 1, func(na fluent.MapAssembler) {
-        na.AssembleEntry("name").AssignString("Earth")
-        na.AssembleEntry("radius").AssignFloat(6371000)
-    })
-
-    earthLink, err := bridge.Build(earthNode) 
+    fmt.Printf("Parsed JWS: %v\n", sig)
+    c, e := sig.CompactSerialize()
+    if e != nil { panic("compact!") }
+    fmt.Printf("Compact serialization: %v\n", c)
+    verifiedPayload, err := sig.Verify(privateKey.Public())
     if err != nil {
-        return nil, fmt.Errorf("error creating earth: %v", err)
+        fmt.Fprintf(os.Stderr, "Error verifying jws: %v", err)
+        os.Exit(-1)
     }
-
-    marsNode := fluent.MustBuildMap(basicnode.Prototype.Map, 1, func(na fluent.MapAssembler) {
-        na.AssembleEntry("name").AssignString("Mars")
-        na.AssembleEntry("radius").AssignFloat(3389500)
-    })
-
-    marsLink, err := bridge.Build(marsNode)
+    fmt.Printf("Verified payload: %v\n", verifiedPayload)
+    _, payloadCid, err := cid.CidFromBytes(verifiedPayload)
     if err != nil {
-        return nil, fmt.Errorf("error creating mars: %v", err)
+        fmt.Fprintf(os.Stderr, "Error decoding verified payload to CID: %v", err)
+        os.Exit(-1)
     }
-
-	np := fluent.MustBuildMap(basicnode.Prototype.Map, 1, func(na fluent.MapAssembler) {
-		na.AssembleEntry("planets").AssignNode(fluent.MustBuildMap(basicnode.Prototype.Map, 2, func(na fluent.MapAssembler) {
-            na.AssembleEntry("earth").AssignLink(earthLink)
-            na.AssembleEntry("mars").AssignLink(marsLink)
-        }))
-	})
-
-    return bridge.Build(np)
+    fmt.Printf("Decoded payload: %v\n", payloadCid)
 }
 
 type IPFSBridge struct {
     *ipfsApi.Shell
-    builder cidlink.LinkBuilder
 }
 
 func (i *IPFSBridge) Build(node ipld.Node) (ipld.Link, error) {
-	return i.builder.Build(
+    lb := cidlink.LinkBuilder{Prefix: cid.Prefix{
+		Version:  1,    // Usually '1'.
+		Codec:    0x71, // 0x71 means "dag-cbor" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+		MhType:   0x15, // 0x15 means "sha3-384" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+		MhLength: 48,   // sha3-224 hash has a 48-byte sum.
+	}}
+	return lb.Build(
 		context.Background(),
 		ipld.LinkContext{},
 		node,
 		func(ipld.LinkContext) (io.Writer, ipld.StoreCommitter, error) {
 			buf := bytes.Buffer{}
 			return &buf, func(lnk ipld.Link) error {
-                _, err := i.BlockPut(buf.Bytes(), "cbor", "sha3-384", i.builder.MhLength)
+                _, err := i.BlockPut(buf.Bytes(), "cbor", "sha3-384", lb.MhLength)
                 return err
 			}, nil
 		},

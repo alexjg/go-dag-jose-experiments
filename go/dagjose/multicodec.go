@@ -11,29 +11,13 @@ import (
 	ipld "github.com/ipld/go-ipld-prime"
 	dagcbor "github.com/ipld/go-ipld-prime/codec/dagcbor"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+
 )
 
 
 func init() {
 	cidlink.RegisterMulticodecDecoder(0x85, Decoder)
 	cidlink.RegisterMulticodecEncoder(0x85, dagcbor.Encoder)
-}
-
-type JOSEHeaders struct {
-    alg *string
-    enc *string
-    zip *string
-    jku *string
-    jwk *string
-    kid *string
-    x5u *string
-    x5c *string
-    x5t *string
-    x5t_S256 *string
-    typ *string
-    ctyp *string
-    crit *string
-    additionalHeaders map[string]string
 }
 
 type JOSESignature struct {
@@ -47,7 +31,7 @@ type DagJOSE struct {
     signatures []JOSESignature
 }
 
-func (d *DagJOSE) FullSerialization() string {
+func (d *DagJOSE) GeneralJSONSerialization() string {
     jsonJose := make(map[string]interface{})
     jsonJose["payload"] = base64.RawURLEncoding.EncodeToString(d.payload.Bytes()) 
     sigs := make([]map[string]string, 0)
@@ -76,14 +60,12 @@ func Decoder(na ipld.NodeAssembler, r io.Reader) error {
         if err != nil {
             return fmt.Errorf("error decoding CBOR for dag-jose: %v", err)
         }
-        fmt.Printf("Rawdecoded: %v\n", rawDecoded)
         payload := rawDecoded["payload"].([]byte)
         cidPayload, err := cid.Cast(payload)
         if err != nil {
             return fmt.Errorf("Error casting payload to cid: %v", err)
         }
         joseAssembler.dagJose.payload = &cidPayload
-        fmt.Printf("signatures: %s\n", rawDecoded["signatures"])
         for _, rawSig := range rawDecoded["signatures"].([]interface{}) {
             sig := rawSig.(map[interface{}]interface{})
             protected := base64.RawURLEncoding.EncodeToString(sig["protected"].([]byte))
