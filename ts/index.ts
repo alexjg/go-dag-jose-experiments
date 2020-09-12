@@ -29,6 +29,16 @@ async function main() {
     console.log(jws)
     const cid = await api.dag.put(jws, { format: format.codec, hashAlg: "sha2-256"})
     console.log(cid)
+
+    const retrieved = await api.dag.get(new CID("bagcqcfjqilh4p7376yw3a4abv5fbijw3h6nrq4sn6qekhmxpyg3hoor2qkbkfi7jaspjla7dauslzhw3hoozi"))
+    console.log(JSON.stringify(retrieved, null, 4))
+    dagJose.verifyDagJWS(retrieved.value, [{
+        id: "",
+        type: "",
+        controller: "",
+        publicKeyBase64: bytesToBase64(keypair.publicKey)
+    }])
+
 }
 
 main().then(() => {
