@@ -3,6 +3,7 @@ module dagjoseroundtrip
 go 1.14
 
 require (
+	github.com/alexjg/go-dag-jose v0.0.0-20200924132953-939ca70030cb
 	github.com/fxamacker/cbor/v2 v2.2.0
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-ipfs-api v0.2.0

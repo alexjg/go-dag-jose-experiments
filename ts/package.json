@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "dag-jose": "^0.1.1",
+    "dag-jose": "git+https://github.com/alexjg/js-dag-jose#use-patched-did-jwt",
     "did-jwt": "git+https://github.com/alexjg/did-jwt.git#fix-eddsa-alg",
     "ipfs": "^0.50.1",
     "ipfs-http-client": "^46.1.1",

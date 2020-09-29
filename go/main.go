@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 
-	"dagjoseroundtrip/dagjose"
 	"encoding/hex"
 
 	"golang.org/x/crypto/ed25519"
@@ -20,6 +19,7 @@ import (
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/node/basic"
 	gojose "gopkg.in/square/go-jose.v2"
+    "github.com/alexjg/go-dag-jose/dagjose"
 )
 
 func main() {
